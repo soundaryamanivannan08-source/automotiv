@@ -1,0 +1,861 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STACKLY | Driver Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap");
+
+      /* Reset any global icon color override from external sheets */
+      .navbar i[class^="ph-"],
+      .navbar i[class*=" ph-"],
+      .navbar .ph {
+        color: #F8FAFC !important;
+      }
+      /* Sidebar icons keep accent color */
+      .sidebar i[class^="ph-"],
+      .sidebar i[class*=" ph-"] {
+        color: var(--accent) !important;
+      }
+      /* Sidebar logout icon keeps red */
+      .logout-btn i {
+        color: #ff4d4d !important;
+      }
+
+      :root {
+        --accent: #2563EB;
+        --soft-bg: #000000;
+        --sidebar-bg: #000000;
+        --card-bg: #0B1220;
+        --text-main: #F8FAFC;
+        --text-muted: #94A3B8;
+        --border: rgba(255, 255, 255, 0.08);
+        --sidebar-width: 260px;
+        --navbar-height: 64px;
+        --transition: all 0.3s ease;
+      }
+
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      ::-webkit-scrollbar { width: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
+
+      html, body {
+        background: var(--soft-bg);
+        color: var(--text-main);
+        font-family: "Plus Jakarta Sans", sans-serif;
+        min-height: 100vh;
+        overflow-x: hidden;
+        width: 100%;
+      }
+
+      /* â”€â”€â”€ Sidebar â”€â”€â”€ */
+      .sidebar {
+        width: var(--sidebar-width);
+        background: var(--sidebar-bg);
+        padding: 30px 20px;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        height: 100vh;
+        top: 0;
+        left: 0;
+        z-index: 1100;
+        border-right: 1px solid var(--border);
+        transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(0);
+      }
+      body.sidebar-active .sidebar {
+        transform: translateX(-100%);
+      }
+      .sidebar-header {
+        font-weight: 800;
+        font-size: 1.5rem;
+        margin-bottom: 40px;
+        letter-spacing: -1px;
+        color: #F8FAFC;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .sidebar-menu { list-style: none; flex-grow: 1; }
+      .sidebar li {
+        padding: 14px 18px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        transition: var(--transition);
+        border: 1px solid transparent;
+      }
+      .sidebar li i { font-size: 1.1rem; }
+      .sidebar li.active {
+        color: var(--accent);
+        border: 1px solid rgba(37, 99, 235, 0.3);
+        background: rgba(37, 99, 235, 0.02);
+      }
+      .sidebar li:hover:not(.active) {
+        color: #F8FAFC;
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .logout-btn-container { margin-top: auto; }
+      .logout-btn {
+        padding: 14px 18px;
+        color: #ff4d4d;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border-radius: 12px;
+        background: rgba(255, 77, 77, 0.05);
+        transition: var(--transition);
+        border: 1px solid transparent;
+      }
+      .logout-btn:hover {
+        background: rgba(255, 77, 77, 0.1);
+        border: 1px solid rgba(255, 77, 77, 0.2);
+      }
+
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(11, 18, 32, 0.75);
+        z-index: 1050;
+      }
+      @media (max-width: 789px) {
+        body.sidebar-active .sidebar-overlay { display: block; }
+      }
+
+      /* â”€â”€â”€ Main Layout â”€â”€â”€ */
+      .main {
+        margin-left: var(--sidebar-width);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      body.sidebar-active .main {
+        margin-left: 0;
+      }
+
+      /* â”€â”€â”€ Navbar â”€â”€â”€ */
+      .navbar {
+        position: fixed;
+        top: 0;
+        left: var(--sidebar-width);
+        right: 0;
+        height: var(--navbar-height);
+        z-index: 1000;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 40px;
+        background: #0B1220;
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 2px 24px rgba(11, 18, 32, 0.6);
+        transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      body.sidebar-active .navbar {
+        left: 0;
+      }
+      .navbar * { color: #F8FAFC; }
+
+      /* â”€â”€â”€ Content Area â”€â”€â”€ */
+      .content-area {
+        padding: calc(var(--navbar-height) + 24px) 40px 40px;
+        flex: 1;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      /* â”€â”€â”€ Mobile Toggle â”€â”€â”€ */
+      .mobile-nav-toggle {
+        display: none;
+        font-size: 1.8rem;
+        cursor: pointer;
+        color: #F8FAFC !important;
+        line-height: 1;
+      }
+
+      /* â”€â”€â”€ Bento Grid â”€â”€â”€ */
+      .bento-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+      }
+      .bento-item {
+        background: var(--card-bg);
+        border-radius: 24px;
+        padding: 28px;
+        border: 1px solid var(--border);
+        transition: var(--transition);
+        position: relative;
+      }
+      .bento-item.active-outline {
+        border: 1px solid rgba(37, 99, 235, 0.4);
+      }
+      .section-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 20px;
+        display: block;
+      }
+
+      /* â”€â”€â”€ Stat Cards â”€â”€â”€ */
+      .stat-subgrid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+      }
+      .stat-card {
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 18px 8px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+      .stat-card i { font-size: 1.2rem; color: var(--accent) !important; }
+      .stat-card span { font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+      .stat-card b { font-size: 1.05rem; font-weight: 800; color: #F8FAFC; }
+      .stat-card b small { font-size: 0.6rem; font-weight: 600; opacity: 0.7; margin-left: 2px; }
+
+      /* â”€â”€â”€ Impact â”€â”€â”€ */
+      .impact-row { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+      .impact-item h3 { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 8px; }
+      .impact-item p { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+      .badge-positive {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        padding: 5px 12px;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        position: absolute;
+        top: 28px;
+        right: 28px;
+      }
+
+      /* â”€â”€â”€ Hubs â”€â”€â”€ */
+      .hub-list { display: flex; flex-direction: column; gap: 12px; }
+      .hub-item {
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .hub-info h4 { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+      .hub-info p { font-size: 0.74rem; color: var(--text-muted); font-weight: 600; }
+      .hub-power { font-weight: 800; color: var(--accent); font-size: 0.9rem; }
+
+      /* â”€â”€â”€ Chart â”€â”€â”€ */
+      .chart-box { height: 220px; width: 100%; position: relative; }
+
+      /* â”€â”€â”€ Table â”€â”€â”€ */
+      .table-container {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .Service-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+      .Service-table th, .Service-table td { padding: 16px 18px; font-size: 0.88rem; vertical-align: top; }
+      .Service-table th {
+        text-align: left;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+      }
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 700;
+        margin-top: 4px;
+        line-height: 1;
+      }
+      .status-fast { background: #16a34a; }
+      .status-home { background: #2563eb; }
+
+      /* â”€â”€â”€ Helpers â”€â”€â”€ */
+      .span-2 { grid-column: span 2; }
+      .log-row {
+        padding: 18px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .chat-trigger {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        width: 56px;
+        height: 56px;
+        background: var(--accent);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        color: #F8FAFC;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+        z-index: 1200;
+      }
+      .chat-trigger i { color: #F8FAFC !important; }
+
+      /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+         RESPONSIVE BREAKPOINTS
+         (single source of truth, no overlap)
+         â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+      /* â‰¤ 789px â€” mobile: sidebar slides off */
+      @media (max-width: 789px) {
+        .mobile-nav-toggle {
+          display: block;
+        }
+        .sidebar { transform: translateX(-100%); }
+        body.sidebar-active .sidebar { transform: translateX(0); }
+        .navbar {
+          left: 0;
+          padding: 0 20px;
+        }
+        .main {
+          margin-left: 0;
+        }
+        body.sidebar-active .navbar {
+          left: 0;
+        }
+        body.sidebar-active .main {
+          margin-left: 0;
+        }
+        .admin-user-info { display: none; }
+        .content-area { padding: calc(var(--navbar-height) + 16px) 20px 20px; }
+        .bento-grid { grid-template-columns: 1fr; gap: 16px; }
+        .span-2 { grid-column: span 1 !important; }
+      }
+
+      /* â‰¤ 768px â€” narrow tablet */
+      @media (max-width: 768px) {
+        .bento-item { padding: 20px; border-radius: 20px; }
+        .impact-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+        .impact-item { text-align: left !important; }
+        .impact-item h3 { font-size: 1.6rem; }
+      }
+
+      /* â‰¤ 600px â€” mobile */
+      @media (max-width: 600px) {
+        .content-area { padding: calc(var(--navbar-height) + 12px) 14px 14px; }
+        .navbar { padding: 0 14px; }
+        #page-title { font-size: 0.82rem; }
+        .bento-grid { gap: 12px; }
+        .bento-item { padding: 18px; border-radius: 18px; }
+      }
+
+      /* â‰¤ 480px â€” small mobile */
+      @media (max-width: 480px) {
+        .sidebar { width: 82%; max-width: 280px; }
+        .stat-subgrid { grid-template-columns: 1fr; gap: 10px; }
+        .impact-item h3 { font-size: 1.4rem; }
+        .log-row { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+        .log-row div { text-align: left !important; }
+        .hub-item { flex-direction: column; align-items: flex-start !important; gap: 10px; }
+        .hub-power { align-self: flex-end; }
+      }
+
+      /* â‰¤ 700px â€” Service table stacks */
+      @media (max-width: 700px) {
+        .Service-table { min-width: 0; }
+        .Service-table thead { display: none; }
+        .Service-table, .Service-table tbody, .Service-table tr, .Service-table td { display: block; width: 100%; }
+        .Service-table tr { margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .Service-table td { padding: 10px 14px; text-align: left; position: relative; }
+        .Service-table td::before {
+          content: attr(data-label);
+          padding: 14px 16px;
+        }
+      }
+
+      /* Helper Classes */
+      .span-2 {
+        grid-column: span 2;
+      }
+      .log-row {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.02);
+        border: 1px solid var(--border);
+        border-radius: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      /* Animation */
+      .fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Floating Chat */
+      .chat-trigger {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        background: var(--accent);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        color: #F8FAFC;
+        cursor: pointer;
+        box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+        z-index: 1000;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div
+      class="sidebar-overlay"
+      id="sidebarOverlay"
+      onclick="toggleSidebar()"
+    ></div>
+
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+      <a href="index.html">
+          <img
+          src="assets/stackly.webp"
+          alt="Stackly"
+          style="height: 35px; width: auto"
+        />
+      </a>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="active" onclick="loadUserSection('overview', this)">
+          <i class="ph-fill ph-house"></i> Overview
+        </li>
+        <li onclick="loadUserSection('profile', this)">
+          <i class="ph-bold ph-user-circle"></i> Profile Summary
+        </li>
+        <li onclick="loadUserSection('trips', this)">
+          <i class="ph-bold ph-map-trifold"></i> My Trips
+        </li>
+        <li onclick="loadUserSection('Servicing', this)">
+          <i class="ph-bold ph-Engine-Servicing"></i> Servicing
+        </li>
+
+        <li onclick="loadUserSection('notifications', this)">
+          <i class="ph-bold ph-bell"></i> Notifications
+        </li>
+      </ul>
+      <div class="logout-btn-container">
+        <div class="logout-btn" onclick="window.location.href = 'login.html'">
+          <i class="ph-bold ph-sign-out"></i> Logout
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <nav class="navbar">
+        <div style="display: flex; align-items: center; gap: 15px">
+          <i
+            class="ph-bold ph-list mobile-nav-toggle"
+            onclick="toggleSidebar()"
+          ></i>
+          <div style="font-weight: 800" id="page-title">
+            USER DASHBOARD
+          </div>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center; min-width: 0;">
+          <i
+            class="ph-bold ph-bell"
+            style="font-size: 1.4rem; cursor: pointer; flex-shrink: 0;"
+            onclick="loadUserSection('notifications')"
+          ></i>
+          <div style="text-align: right; min-width: 0; max-width: 200px;" class="admin-user-info">
+            <b style="display: block; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" class="user-name"
+              >James Rubert</b
+            >
+            <span
+              style="
+                display: block;
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              "
+              class="user-email"
+              >Lead Driver â€¢ james@stackly.com</span
+            >
+          </div>
+          <div
+            class="avatar user-initials"
+            style="
+              width: 40px;
+              height: 40px;
+              border-radius: 50%;
+              background: var(--accent);
+              color: #F8FAFC;
+              border: 2px solid #000;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: 800;
+              cursor: pointer;
+              flex-shrink: 0;
+            "
+          >
+            JR
+          </div>
+        </div>
+      </nav>
+
+      <div class="content-area" id="content-area"></div>
+    </div>
+
+  
+
+    <script>
+      function toggleSidebar() {
+        document.body.classList.toggle("sidebar-active");
+      }
+
+      function loadUserSection(section, el) {
+        const container = document.getElementById("content-area");
+
+        if (el) {
+          document
+            .querySelectorAll(".sidebar li")
+            .forEach((l) => l.classList.remove("active"));
+          el.classList.add("active");
+          if (window.innerWidth <= 789) {
+            document.body.classList.remove("sidebar-active");
+          }
+        }
+
+        container.innerHTML = "";
+        container.classList.remove("fade-in");
+        void container.offsetWidth;
+        container.classList.add("fade-in");
+
+        const sections = {
+          overview: `
+                <div class="bento-grid">
+                    <div class="bento-item">
+                        <span class="section-label">DIAGNOSTIC TELEMETRY</span>
+                        <div class="stat-subgrid">
+                            <div class="stat-card">
+                                <i class="ph-fill ph-gauge"></i>
+                                <span>PRESSURE</span>
+                                <b>36 <small>PSI</small></b>
+                            </div>
+                            <div class="stat-card">
+                                <i class="ph-fill ph-thermometer-simple"></i>
+                                <span>ENGINE</span>
+                                <b>42 <small>Â°C</small></b>
+                            </div>
+                            <div class="stat-card">
+                                <i class="ph-fill ph-drop"></i>
+                                <span>COOLANT</span>
+                                <b>99 <small>%</small></b>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-item">
+                        <span class="badge-positive">POSITIVE</span>
+                        <span class="section-label">ENVIRONMENTAL IMPACT</span>
+                        <div class="impact-row">
+                            <div class="impact-item">
+                                <h3>3.2 <small style="font-size: 0.8rem; opacity: 0.5;">Tons</small></h3>
+                                <p>Carbon Offset (Life)</p>
+                            </div>
+                            <div class="impact-item" style="text-align: right;">
+                                <h3 style="color: var(--accent);">$2.8k</h3>
+                                <p>Fuel Savings (Life)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bento-item active-outline">
+                        <span class="section-label">PERFORMANCE SPECTRUM</span>
+                        <div class="chart-box">
+                            <canvas id="performanceChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bento-item">
+                        <span class="section-label">NEARBY Service Hubs</span>
+                        <div class="hub-list">
+                            <div class="hub-item">
+                                <div class="hub-info">
+                                    <h4>VoltPulse - Salem Central</h4>
+                                    <p>1.2 km â€¢ 4/6 Stalls Available</p>
+                                </div>
+                                <div class="hub-power">350kW</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `,
+          profile: `
+                <div class="bento-grid">
+                    <div class="bento-item span-2">
+                        <span class="section-label">COMMANDER PROFILE</span>
+                        <div style="display: flex; align-items: center; gap: 30px; margin-top: 20px; flex-wrap: wrap;">
+                            <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(45deg, #111, #222); border: 2px solid var(--border); display: grid; place-items: center; font-size: 2.5rem; font-weight: 800;">JR</div>
+                            <div>
+                                <h2 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 5px;">James Rubert</h2>
+                                <p style="color: var(--text-muted); font-weight: 600;">Elite Commander â€¢ Member Since 2024</p>
+                                <div style="margin-top: 15px; display: flex; gap: 10px;">
+                                    <span style="background: var(--accent); color: #F8FAFC; padding: 5px 15px; border-radius: 8px; font-weight: 800; font-size: 0.7rem;">LVL 42</span>
+                                    <span style="background: rgba(255,255,255,0.05); color: #F8FAFC; padding: 5px 15px; border-radius: 8px; font-weight: 800; font-size: 0.7rem;">PRO DRIVER</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bento-item">
+                        <span class="section-label">ACCOUNT STATS</span>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                                <span>Safety Score</span>
+                                <b style="color: var(--accent);">98/100</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                                <span>Efficiency Rank</span>
+                                <b>Top 5%</b>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bento-item">
+                        <span class="section-label">BADGES</span>
+                        <div style="display: flex; gap: 10px;">
+                            <i class="ph-fill ph-shield-check" style="font-size: 2rem; color: #4a9eff;"></i>
+                            <i class="ph-fill ph-wrench" style="font-size: 2rem; color: var(--accent);"></i>
+                            <i class="ph-fill ph-leaf" style="font-size: 2rem; color: #10b981;"></i>
+                        </div>
+                    </div>
+                </div>
+            `,
+          trips: `
+                <div class="bento-grid">
+                    <div class="bento-item span-2">
+                        <span class="section-label">MISSION HISTORY</span>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${[1, 2, 3]
+                              .map(
+                                () => `
+                                <div class="log-row">
+                                    <div><h4 style="font-size: 0.9rem;">Sector 7G â†’ Research Lab</h4><p style="font-size: 0.75rem; color: var(--text-muted);">Today, 10:30 AM â€¢ 42 km â€¢ 12 kWh</p></div>
+                                    <div style="text-align: right;"><b style="color: var(--accent);">SUCCESS</b><p style="font-size: 0.6rem;">+150 XP</p></div>
+                                </div>
+                            `,
+                              )
+                              .join("")}
+                        </div>
+                    </div>
+                </div>
+            `,
+          Servicing: `
+            <div class="bento-grid">
+                        <div class="bento-item span-3">
+                            <h3 style="margin-bottom:20px; font-weight:800;">Recent Service Sessions</h3>
+                            <div class="table-container">
+                                <table class="Service-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Station Location</th>
+                                            <th>Speed</th>
+                                            <th>Energy</th>
+                                            <th>Cost</th>
+                                        </tr>
+                                    </thead>
+    <tbody>
+                                        <tr>
+                                            <td data-label="Date">Mar 28, 2026</td>
+                                            <td data-label="Station Location"><b>Salem South SuperServicer</b><br><span class="status-badge status-fast">DC Fast</span></td>
+                                            <td data-label="Speed">150 kW</td>
+                                            <td data-label="Energy">32 kWh</td>
+                                            <td data-label="Cost">$9.60</td>
+                                        </tr>
+                                        <tr>
+                                            <td data-label="Date">Mar 25, 2026</td>
+                                            <td data-label="Station Location"><b>Home Wallbox</b><br><span class="status-badge status-home">Level 2</span></td>
+                                            <td data-label="Speed">7.2 kW</td>
+                                            <td data-label="Energy">15 kWh</td>
+                                            <td data-label="Cost">$2.10</td>
+                                        </tr>
+                                        <tr>
+                                            <td data-label="Date">Mar 21, 2026</td>
+                                            <td data-label="Station Location"><b>Salem Mall Service Park</b><br><span class="status-badge status-fast">DC Fast</span></td>
+                                            <td data-label="Speed">50 kW</td>
+                                            <td data-label="Energy">22 kWh</td>
+                                            <td data-label="Cost">$6.50</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="bento-item span-1 Engine-card">
+                            <div>
+                                <i class="ph-bold ph-map-trifold" style="font-size:1.5rem; color:var(--accent)"></i>
+                                <p style="font-size:0.8rem; font-weight:700; margin-top:10px;">NEAREST STATION</p>
+                            </div>
+                            <div style="margin-top:20px;">
+                                <h4 style="font-weight:800;">Salem North Plaza</h4>
+                                <p style="font-size:0.8rem; opacity:0.7">1.2 km away â€¢ 4 slots free</p>
+                            </div>
+                            <button onclick="window.location.href='404.html'" style="background:var(--accent); color: #F8FAFC; border:none; padding:12px; border-radius:10px; margin-top:20px; font-weight:800; width:100%; cursor:pointer;">NAVIGATE</button>
+                        </div>
+                    </div >
+          `,
+
+          notifications: `
+                <div class="bento-grid">
+                    <div class="bento-item">
+                        <span class="section-label">SYSTEM ALERTS</span>
+                        <div style="background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.1); padding: 20px; border-radius: 20px;">
+                            <h4 style="color: var(--accent); margin-bottom: 5px;">Update Ready</h4>
+                            <p style="font-size: 0.8rem;">VoltOS 4.5.2 is available for your Unit.</p>
+                            <button onclick="window.location.href='404.html'" style="margin-top: 15px; font-size: 0.7rem; font-weight: 800; text-decoration: underline; background: none; border: none; color: #F8FAFC; cursor: pointer;">VIEW CHANGELOG</button>
+                        </div>
+                    </div>
+                </div>
+            `,
+        };
+
+        container.innerHTML =
+          sections[section] ||
+          `<div class="bento-grid"><div class="bento-item">Section ${section} coming soon.</div></div>`;
+
+        if (section === "overview") {
+          setTimeout(initChart, 100);
+        }
+      }
+
+      function initChart() {
+        const ctx = document.getElementById("performanceChart");
+        if (!ctx) return;
+
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            datasets: [
+              {
+                label: "Efficiency",
+                data: [20, 35, 10, 25, 55, 12, 10],
+                borderColor: "#2563EB",
+                backgroundColor: "rgba(37, 99, 235, 0.05)",
+                fill: true,
+                tension: 0.5,
+                borderWidth: 3,
+                pointRadius: 0,
+              },
+            ],
+          },
+          options: {
+            plugins: { legend: { display: false } },
+            scales: {
+              x: {
+                grid: { display: false },
+                ticks: { color: "#444", font: { size: 10 } },
+              },
+              y: { grid: { display: false }, display: false },
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+          },
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        AOS.init({ duration: 800, once: true });
+
+        // Dynamic User Data
+        const userEmail =
+          localStorage.getItem("userEmail") || "james@stackly.com";
+        const userRole = localStorage.getItem("userRole") || "Driver";
+        let userName = localStorage.getItem("userName");
+        if (!userName || userName === "Welcome Back") userName = "James Rubert";
+        const initials =
+          userName
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .toUpperCase()
+            .substring(0, 2) || "JR";
+
+        const nameEl = document.querySelector(".user-name");
+        const emailEl = document.querySelector(".user-email");
+        const initialsEl = document.querySelector(".user-initials");
+
+        if (nameEl) nameEl.innerText = userName;
+        if (emailEl) emailEl.innerText = `${userRole} â€¢ ${userEmail}`;
+        if (initialsEl) initialsEl.innerText = initials;
+
+        loadUserSection(
+          "overview",
+          document.querySelector(".sidebar li.active"),
+        );
+      });
+    </script>
+  </body>
+</html>
